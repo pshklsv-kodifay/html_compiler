@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kodify Compiler — HTML, CSS, JS</title>
+  <meta name="description" content="Корпоративный HTML-компилятор Kodify: вставь HTML, CSS и JavaScript, запусти проект и сохрани его файлом.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <a class="logo" href="./" aria-label="Kodify Compiler">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <span class="logo-text">KODIFY <em>COMPILER</em></span>
+    </a>
+    <nav class="nav">
+      <a href="#workspace">Редактор</a>
+      <a href="#howto">Как пользоваться</a>
+    </nav>
+    <div class="header-actions">
+      <button class="btn btn-ghost" type="button" id="btn-example">Пример</button>
+      <button class="btn btn-primary" type="button" id="btn-run">Запустить</button>
+    </div>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <section class="panel editor-panel">
+      <div class="panel-head">
+        <div class="tabs" role="tablist" aria-label="Язык кода">
+          <button class="tab is-active" type="button" role="tab" aria-selected="true" data-tab="html">HTML</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="css">CSS</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="js">JS</button>
+        </div>
+        <div class="panel-meta">
+          <label class="switch">
+            <input type="checkbox" id="auto-run">
+            <span>Автозапуск</span>
+          </label>
+          <button class="icon-btn" type="button" id="btn-clear" title="Очистить редакторы">Очистить</button>
+        </div>
+      </div>
+
+      <div class="editors">
+        <div class="editor-pane is-active" data-pane="html">
+          <label class="sr-only" for="code-html">HTML-код</label>
+          <textarea id="code-html" spellcheck="false" autocomplete="off" placeholder="Вставь сюда HTML: разметку или целый документ..."></textarea>
+        </div>
+        <div class="editor-pane" data-pane="css">
+          <label class="sr-only" for="code-css">CSS-код</label>
+          <textarea id="code-css" spellcheck="false" autocomplete="off" placeholder="Вставь сюда CSS-стили..."></textarea>
+        </div>
+        <div class="editor-pane" data-pane="js">
+          <label class="sr-only" for="code-js">JavaScript-код</label>
+          <textarea id="code-js" spellcheck="false" autocomplete="off" placeholder="Вставь сюда JavaScript..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="panel-head">
+        <h2>Превью</h2>
+        <div class="panel-meta">
+          <span class="status" id="run-status">Готов к запуску</span>
+          <button class="icon-btn" type="button" id="btn-refresh" title="Перезапустить">Обновить</button>
+        </div>
+      </div>
+      <div class="preview-frame-wrap">
+        <iframe id="preview" title="Результат кода" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads allow-same-origin"></iframe>
+        <div class="preview-empty" id="preview-empty">
+          <p>Нажми <strong>Запустить</strong> или Ctrl + Enter</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="bottom-bar">
+    <div class="console-panel">
+      <div class="panel-head">
+        <h2>Консоль</h2>
+        <button class="icon-btn" type="button" id="btn-clear-console">Очистить лог</button>
+      </div>
+      <div class="console" id="console" aria-live="polite"></div>
+    </div>
+
+    <div class="save-panel">
+      <div class="panel-head">
+        <h2>Сохранить HTML</h2>
+        <span class="folder-chip" id="folder-chip">Папка не выбрана</span>
+      </div>
+      <div class="save-form">
+        <label class="field">
+          <span>Имя файла</span>
+          <input type="text" id="filename" value="Index.html" maxlength="120">
+        </label>
+        <div class="save-actions">
+          <button class="btn btn-ghost" type="button" id="btn-pick-folder">Выбрать папку</button>
+          <button class="btn btn-primary" type="button" id="btn-save">Сохранить в папку</button>
+        </div>
+        <p class="save-hint" id="save-hint">
+          В Chrome и Edge можно выбрать папку на компьютере. В других браузерах файл скачается — сохрани его куда нужно.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="howto" class="howto">
+    <h2>Как пользоваться</h2>
+    <div class="howto-grid">
+      <article>
+        <span class="step">01</span>
+        <h3>Вставь код</h3>
+        <p>Скопируй HTML, CSS и JS в соответствующие вкладки. Если HTML уже целый документ — компилятор аккуратно добавит стили и скрипт.</p>
+      </article>
+      <article>
+        <span class="step">02</span>
+        <h3>Запусти</h3>
+        <p>Кнопка «Запустить» собирает три части в одну страницу и показывает результат справа. Ошибки JS появятся в консоли.</p>
+      </article>
+      <article>
+        <span class="step">03</span>
+        <h3>Сохрани файл</h3>
+        <p>Выбери папку и сохрани готовый <code>.html</code>. Повторные сохранения идут в ту же папку, пока не сменишь её.</p>
+      </article>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>
+      <strong>KODIFY COMPILER</strong>
+      <p>Учебный инструмент онлайн-школы программирования</p>
+    </div>
+    <p class="footer-copy">© 2017–2026 Kodify. Ctrl + Enter — запуск, Ctrl + S — сохранение.</p>
+  </footer>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

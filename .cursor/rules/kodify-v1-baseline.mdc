@@ -1,0 +1,18 @@
+---
+description: Baseline v1 of Kodify Compiler — restore from this snapshot if experiments go wrong
+alwaysApply: true
+---
+
+# Kodify Compiler — версия v1 (baseline)
+
+Зафиксирована 8 сентября 2026. Снимок файлов: `versions/v1-baseline/`.
+
+Это учебный HTML/CSS/JS компилятор в стиле kodify.online (чёрный `#111`, лайм `#b8f750`). Пока не просили иное — не ломай этот каркас.
+
+Состояние v1:
+- Полноэкранный редактор + превью
+- Имя файла по умолчанию: `Index.html`
+- Запуск кода, консоль, сохранение в выбранную папку
+- Статический сайт, без бэкенда, под GitHub Pages
+
+Если пользователь просит откатиться к этой версии — копируй файлы из `versions/v1-baseline/` в корень проекта.
