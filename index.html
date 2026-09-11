@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -40,6 +41,7 @@
             <input type="checkbox" id="auto-run">
             <span>Автозапуск</span>
           </label>
+          <button class="icon-btn" type="button" id="btn-format" title="Красиво оформить код">Форматировать</button>
           <button class="icon-btn" type="button" id="btn-clear" title="Очистить редакторы">Очистить</button>
         </div>
       </div>
@@ -60,12 +62,13 @@
       </div>
     </section>
 
-    <section class="panel preview-panel">
+    <section class="panel preview-panel" id="preview-panel">
       <div class="panel-head">
         <h2>Превью</h2>
         <div class="panel-meta">
           <span class="status" id="run-status">Готов к запуску</span>
           <button class="icon-btn" type="button" id="btn-refresh" title="Перезапустить">Обновить</button>
+          <button class="btn btn-ghost btn-fs" type="button" id="btn-fullscreen">На весь экран</button>
         </div>
       </div>
       <div class="preview-frame-wrap">
@@ -98,10 +101,11 @@
         </label>
         <div class="save-actions">
           <button class="btn btn-ghost" type="button" id="btn-pick-folder">Выбрать папку</button>
-          <button class="btn btn-primary" type="button" id="btn-save">Сохранить в папку</button>
+          <button class="btn btn-primary" type="button" id="btn-save">Сохранить как</button>
         </div>
         <p class="save-hint" id="save-hint">
-          В Chrome и Edge можно выбрать папку на компьютере. В других браузерах файл скачается — сохрани его куда нужно.
+          Не выбирай Рабочий стол, OneDrive и корень диска C:\ — Chrome считает их системными.
+          Создай обычную папку, например Документы\kodify, или просто нажми «Сохранить как».
         </p>
       </div>
     </div>
@@ -123,7 +127,7 @@
       <article>
         <span class="step">03</span>
         <h3>Сохрани файл</h3>
-        <p>Выбери папку и сохрани готовый <code>.html</code>. Повторные сохранения идут в ту же папку, пока не сменишь её.</p>
+        <p>Нажми «Сохранить как» и укажи место файла. Папку лучше брать простую, без Рабочего стола и OneDrive — иначе Chrome заблокирует доступ.</p>
       </article>
     </div>
   </section>
@@ -133,10 +137,22 @@
       <strong>KODIFY COMPILER</strong>
       <p>Учебный инструмент онлайн-школы программирования</p>
     </div>
-    <p class="footer-copy">© 2017–2026 Kodify. Ctrl + Enter — запуск, Ctrl + S — сохранение.</p>
+    <p class="footer-copy">© 2017–2026 Kodify. Ctrl + Enter — запуск, Ctrl + S — сохранение, Esc — свернуть превью.</p>
   </footer>
 
   <div class="toast" id="toast" role="status"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-html.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

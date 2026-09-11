@@ -72,9 +72,38 @@ let directoryHandle = null;
 let previewUrl = null;
 let autoRunTimer = 0;
 let toastTimer = 0;
+const codeEditors = {};
+
+function getCode(lang) {
+  return codeEditors[lang] ? codeEditors[lang].getValue() : els[lang].value;
+}
+
+function setCode(lang, value) {
+  if (codeEditors[lang]) codeEditors[lang].setValue(value || "");
+  else els[lang].value = value || "";
+}
+
+function currentTab() {
+  const tab = document.querySelector(".tab.is-active");
+  return tab ? tab.dataset.tab : "html";
+}
 
 function supportsDirectoryPicker() {
   return typeof window.showDirectoryPicker === "function";
+}
+
+function supportsSavePicker() {
+  return typeof window.showSaveFilePicker === "function";
+}
+
+function isBlockedFolderError(error) {
+  const text = `${error && error.name} ${error && error.message}`.toLowerCase();
+  return (
+    (error && error.name === "SecurityError") ||
+    (error && error.name === "NotAllowedError") ||
+    text.includes("системн") ||
+    text.includes("system")
+  );
 }
 
 function showToast(message, isError = false) {
@@ -89,9 +118,9 @@ function persist() {
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
-      html: els.html.value,
-      css: els.css.value,
-      js: els.js.value,
+      html: getCode("html"),
+      css: getCode("css"),
+      js: getCode("js"),
       filename: els.filename.value,
       autoRun: els.autoRun.checked,
     })
@@ -105,9 +134,9 @@ function restore() {
       loadExample(false);
       return;
     }
-    els.html.value = saved.html || "";
-    els.css.value = saved.css || "";
-    els.js.value = saved.js || "";
+    setCode("html", saved.html || "");
+    setCode("css", saved.css || "");
+    setCode("js", saved.js || "");
     const savedName = saved.filename || "Index.html";
     els.filename.value = savedName === "project.html" ? "Index.html" : savedName;
     els.autoRun.checked = Boolean(saved.autoRun);
@@ -117,9 +146,9 @@ function restore() {
 }
 
 function loadExample(notify = true) {
-  els.html.value = EXAMPLE.html;
-  els.css.value = EXAMPLE.css;
-  els.js.value = EXAMPLE.js;
+  setCode("html", EXAMPLE.html);
+  setCode("css", EXAMPLE.css);
+  setCode("js", EXAMPLE.js);
   persist();
   if (notify) showToast("Загружен учебный пример");
 }
@@ -208,7 +237,7 @@ function logLine(type, text) {
 }
 
 function runCode() {
-  const html = compileDocument(els.html.value, els.css.value, els.js.value);
+  const html = compileDocument(getCode("html"), getCode("css"), getCode("js"));
   const hooked = withConsoleHook(html);
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   const blob = new Blob([hooked], { type: "text/html" });
@@ -221,18 +250,27 @@ function runCode() {
 
 async function pickFolder() {
   if (!supportsDirectoryPicker()) {
-    showToast("Этот браузер не умеет выбирать папку. Файл скачается при сохранении.", true);
+    showToast("Этот браузер не умеет выбирать папку. Нажми «Сохранить как».", true);
     return false;
   }
   try {
-    directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+    directoryHandle = await window.showDirectoryPicker({
+      mode: "readwrite",
+      startIn: "documents",
+    });
     els.folderChip.textContent = `Папка: ${directoryHandle.name}`;
-    els.saveHint.textContent = "Следующие сохранения пойдут в выбранную папку. Чтобы сменить её, нажми «Выбрать папку» ещё раз.";
+    els.saveHint.textContent = "Следующие сохранения пойдут в эту папку. Чтобы сменить её, нажми «Выбрать папку» ещё раз.";
     showToast(`Папка «${directoryHandle.name}» выбрана`);
     return true;
   } catch (error) {
     if (error && error.name === "AbortError") return false;
-    showToast("Не удалось открыть папку. Проверь разрешение браузера.", true);
+    directoryHandle = null;
+    els.folderChip.textContent = "Папка не выбрана";
+    if (isBlockedFolderError(error)) {
+      showToast("Chrome не даёт писать в эту папку. Выбери Документы\\kodify или нажми «Сохранить как».", true);
+    } else {
+      showToast("Не удалось открыть папку. Выбери другую или сохрани файл через «Сохранить как».", true);
+    }
     return false;
   }
 }
@@ -242,6 +280,23 @@ async function saveToDirectory(filename, content) {
   const writable = await fileHandle.createWritable();
   await writable.write(content);
   await writable.close();
+}
+
+async function saveWithFilePicker(filename, content) {
+  const handle = await window.showSaveFilePicker({
+    suggestedName: filename,
+    startIn: "documents",
+    types: [
+      {
+        description: "HTML-файл",
+        accept: { "text/html": [".html", ".htm"] },
+      },
+    ],
+  });
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+  return handle.name || filename;
 }
 
 function downloadFile(filename, content) {
@@ -259,13 +314,9 @@ function downloadFile(filename, content) {
 async function saveProject() {
   const filename = sanitizeFilename(els.filename.value);
   els.filename.value = filename;
-  const content = compileDocument(els.html.value, els.css.value, els.js.value);
+  const content = compileDocument(getCode("html"), getCode("css"), getCode("js"));
 
-  if (supportsDirectoryPicker()) {
-    if (!directoryHandle) {
-      const picked = await pickFolder();
-      if (!picked) return;
-    }
+  if (directoryHandle) {
     try {
       const permission = await directoryHandle.queryPermission({ mode: "readwrite" });
       if (permission !== "granted") {
@@ -280,13 +331,23 @@ async function saveProject() {
       if (error && error.name === "AbortError") return;
       directoryHandle = null;
       els.folderChip.textContent = "Папка не выбрана";
-      showToast("Не получилось записать в папку. Попробуй выбрать её снова.", true);
+    }
+  }
+
+  if (supportsSavePicker()) {
+    try {
+      const savedName = await saveWithFilePicker(filename, content);
+      showToast(`Сохранено: ${savedName}`);
+      persist();
       return;
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      showToast("Не получилось сохранить файл диалогом. Скачиваю копию.", true);
     }
   }
 
   downloadFile(filename, content);
-  showToast(`Файл ${filename} скачан — сохрани его в нужную папку`);
+  showToast(`Файл ${filename} скачан — перенеси его в нужную папку`);
   persist();
 }
 
@@ -295,6 +356,123 @@ function scheduleAutoRun() {
   if (!els.autoRun.checked) return;
   clearTimeout(autoRunTimer);
   autoRunTimer = window.setTimeout(runCode, 450);
+}
+
+function isPreviewFullscreen() {
+  const panel = document.getElementById("preview-panel");
+  return document.fullscreenElement === panel || panel.classList.contains("is-fullscreen");
+}
+
+function updateFullscreenButton() {
+  const btn = document.getElementById("btn-fullscreen");
+  const on = isPreviewFullscreen();
+  btn.textContent = on ? "Свернуть" : "На весь экран";
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+}
+
+async function togglePreviewFullscreen() {
+  const panel = document.getElementById("preview-panel");
+  if (document.fullscreenElement === panel) {
+    await document.exitFullscreen();
+    return;
+  }
+  if (panel.classList.contains("is-fullscreen")) {
+    panel.classList.remove("is-fullscreen");
+    document.body.classList.remove("preview-fs");
+    updateFullscreenButton();
+    return;
+  }
+  try {
+    if (panel.requestFullscreen) {
+      await panel.requestFullscreen();
+    } else {
+      panel.classList.add("is-fullscreen");
+      document.body.classList.add("preview-fs");
+    }
+  } catch {
+    panel.classList.add("is-fullscreen");
+    document.body.classList.add("preview-fs");
+  }
+  updateFullscreenButton();
+}
+
+function exitPreviewFullscreen() {
+  const panel = document.getElementById("preview-panel");
+  if (document.fullscreenElement === panel) {
+    document.exitFullscreen();
+    return;
+  }
+  if (panel.classList.contains("is-fullscreen")) {
+    panel.classList.remove("is-fullscreen");
+    document.body.classList.remove("preview-fs");
+    updateFullscreenButton();
+  }
+}
+
+function formatCurrentCode() {
+  const lang = currentTab();
+  const raw = getCode(lang);
+  let pretty = raw;
+  const options = { indent_size: 2, wrap_line_length: 0, end_with_newline: true };
+  try {
+    if (lang === "html" && typeof html_beautify === "function") pretty = html_beautify(raw, options);
+    else if (lang === "css" && typeof css_beautify === "function") pretty = css_beautify(raw, options);
+    else if (lang === "js" && typeof js_beautify === "function") pretty = js_beautify(raw, options);
+    else {
+      showToast("Форматирование недоступно — проверь интернет", true);
+      return;
+    }
+  } catch {
+    showToast("Не получилось отформатировать этот фрагмент", true);
+    return;
+  }
+  setCode(lang, pretty);
+  persist();
+  showToast("Код отформатирован");
+}
+
+function editorExtraKeys() {
+  return {
+    "Ctrl-Enter": runCode,
+    "Cmd-Enter": runCode,
+    "Ctrl-S": function (cm) {
+      cm && saveProject();
+    },
+    "Cmd-S": function (cm) {
+      cm && saveProject();
+    },
+  };
+}
+
+function initEditors() {
+  if (typeof CodeMirror !== "function") return;
+  const modes = { html: "htmlmixed", css: "css", js: "javascript" };
+  ["html", "css", "js"].forEach((lang) => {
+    codeEditors[lang] = CodeMirror.fromTextArea(els[lang], {
+      mode: modes[lang],
+      theme: "kodify",
+      lineNumbers: true,
+      lineWrapping: true,
+      indentUnit: 2,
+      tabSize: 2,
+      matchBrackets: true,
+      autoCloseBrackets: true,
+      autoCloseTags: lang === "html",
+      styleActiveLine: true,
+      extraKeys: editorExtraKeys(),
+    });
+    codeEditors[lang].on("change", scheduleAutoRun);
+  });
+  requestAnimationFrame(() => {
+    if (codeEditors.html) codeEditors.html.refresh();
+  });
+}
+
+function refreshActiveEditor() {
+  const lang = currentTab();
+  const editor = codeEditors[lang];
+  if (!editor) return;
+  requestAnimationFrame(() => editor.refresh());
 }
 
 document.querySelectorAll(".tab").forEach((tab) => {
@@ -306,6 +484,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
     document.querySelectorAll(".editor-pane").forEach((pane) => {
       pane.classList.toggle("is-active", pane.dataset.pane === tab.dataset.tab);
     });
+    refreshActiveEditor();
   });
 });
 
@@ -315,10 +494,12 @@ document.getElementById("btn-example").addEventListener("click", () => {
   loadExample();
   runCode();
 });
+document.getElementById("btn-format").addEventListener("click", formatCurrentCode);
+document.getElementById("btn-fullscreen").addEventListener("click", togglePreviewFullscreen);
 document.getElementById("btn-clear").addEventListener("click", () => {
-  els.html.value = "";
-  els.css.value = "";
-  els.js.value = "";
+  setCode("html", "");
+  setCode("css", "");
+  setCode("js", "");
   persist();
   showToast("Редакторы очищены");
 });
@@ -328,10 +509,9 @@ document.getElementById("btn-clear-console").addEventListener("click", () => {
 document.getElementById("btn-pick-folder").addEventListener("click", pickFolder);
 document.getElementById("btn-save").addEventListener("click", saveProject);
 
-[els.html, els.css, els.js, els.filename].forEach((field) => {
-  field.addEventListener("input", scheduleAutoRun);
-});
+els.filename.addEventListener("input", persist);
 els.autoRun.addEventListener("change", persist);
+document.addEventListener("fullscreenchange", updateFullscreenButton);
 
 window.addEventListener("message", (event) => {
   const data = event.data;
@@ -341,6 +521,11 @@ window.addEventListener("message", (event) => {
 
 window.addEventListener("keydown", (event) => {
   const accel = event.ctrlKey || event.metaKey;
+  if (event.key === "Escape") {
+    exitPreviewFullscreen();
+    return;
+  }
+  if (event.target.closest(".CodeMirror")) return;
   if (accel && event.key === "Enter") {
     event.preventDefault();
     runCode();
@@ -351,11 +536,12 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-if (!supportsDirectoryPicker()) {
+if (!supportsDirectoryPicker() && !supportsSavePicker()) {
   els.folderChip.textContent = "Скачивание файла";
   els.saveHint.textContent =
-    "Выбор папки доступен в Chrome и Edge. Сейчас файл скачается, и его можно положить в любую папку.";
+    "Этот браузер скачает HTML-файл. Сохрани его в любую обычную папку на компьютере.";
 }
 
 restore();
+initEditors();
 if (els.autoRun.checked) runCode();
