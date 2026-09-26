@@ -1,4 +1,56 @@
 const STORAGE_KEY = "kodify-compiler-v1";
+const HINTS = {
+  html: {
+    title: "База HTML",
+    items: [
+      { name: "Emmet: блок", desc: "Напиши в редакторе и нажми Tab — получится div с классом.", code: "div.card" },
+      { name: "Emmet: список", desc: "Сокращение. Tab развернёт три пункта списка.", code: "ul>li*3" },
+      { name: "Emmet: шапка", desc: "Несколько тегов сразу через + и Tab.", code: "h1+p+button" },
+      { name: "Заголовок", desc: "Главный текст на странице. h2 и h3 — меньше.", code: "<h1>Привет, Kodify!</h1>" },
+      { name: "Абзац", desc: "Обычный текст.", code: "<p>Это мой первый сайт.</p>" },
+      { name: "Кнопка", desc: "На неё можно нажать. id нужен для JavaScript.", code: '<button id="go">Нажми меня</button>' },
+      { name: "Ссылка", desc: "Ведёт на другую страницу.", code: '<a href="https://kodify.online">Сайт Kodify</a>' },
+      { name: "Картинка", desc: "src — адрес файла, alt — описание.", code: '<img src="cat.png" alt="Кот" width="200">' },
+      { name: "Список", desc: "ul — список, li — пункт.", code: "<ul>\n  <li>HTML</li>\n  <li>CSS</li>\n  <li>JS</li>\n</ul>" },
+      { name: "Коробка div", desc: "Блок, чтобы группировать элементы.", code: '<div class="card">\n  <h2>Карточка</h2>\n  <p>Текст внутри</p>\n</div>' },
+      { name: "Поле ввода", desc: "Сюда ученик может писать текст.", code: '<input type="text" placeholder="Твоё имя">' },
+      { name: "Жирный и курсив", desc: "Выделить важное слово.", code: "<p>Это <strong>важно</strong> и это <em>красиво</em>.</p>" },
+      { name: "class и id", desc: "class — для стилей, id — для JavaScript.", code: '<p class="note" id="hello">Привет</p>' },
+    ],
+  },
+  css: {
+    title: "База CSS",
+    items: [
+      { name: "Emmet: отступ", desc: "Напиши m20 и нажми Tab — будет margin: 20px.", code: "m20" },
+      { name: "Emmet: флекс", desc: "df + Tab = display: flex.", code: "df" },
+      { name: "Цвет текста", desc: "Любой цвет: имя, #hex или rgb.", code: "h1 {\n  color: #b8f750;\n}" },
+      { name: "Фон", desc: "Заливка страницы или блока.", code: "body {\n  background: #111;\n}" },
+      { name: "Размер шрифта", desc: "px — пиксели, чем больше число, тем крупнее.", code: "p {\n  font-size: 18px;\n  font-family: Arial, sans-serif;\n}" },
+      { name: "Выравнивание", desc: "Текст слева, по центру или справа.", code: ".card {\n  text-align: center;\n}" },
+      { name: "Отступы", desc: "padding — внутри, margin — снаружи.", code: ".card {\n  padding: 24px;\n  margin: 16px;\n}" },
+      { name: "Размер блока", desc: "Ширина и высота.", code: ".card {\n  width: 300px;\n  height: 200px;\n}" },
+      { name: "Рамка и скругление", desc: "Обвести блок и сделать мягкие углы.", code: "button {\n  border: 2px solid #b8f750;\n  border-radius: 10px;\n}" },
+      { name: "Кнопка как на Kodify", desc: "Лаймовый фон и тёмный текст.", code: "button {\n  background: #b8f750;\n  color: #202020;\n  padding: 12px 18px;\n}" },
+      { name: "Наведение мыши", desc: "Стиль, когда навели курсор.", code: "button:hover {\n  background: transparent;\n  color: #b8f750;\n}" },
+      { name: "По центру экрана", desc: "Flex ставит содержимое в середину.", code: "body {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}" },
+    ],
+  },
+  js: {
+    title: "База JavaScript",
+    items: [
+      { name: "Сообщение в консоль", desc: "Проверка: код запустился. Смотри консоль внизу.", code: 'console.log("Привет из JavaScript");' },
+      { name: "Найти элемент", desc: "Берём элемент по id из HTML.", code: 'const btn = document.getElementById("go");' },
+      { name: "Клик по кнопке", desc: "Что делать, когда нажали.", code: 'btn.addEventListener("click", () => {\n  console.log("Кнопка нажата");\n});' },
+      { name: "Поменять текст", desc: "Меняем надпись на странице.", code: 'document.querySelector("h1").textContent = "Готово!";' },
+      { name: "Окно alert", desc: "Всплывающее сообщение.", code: 'alert("Ура, получилось!");' },
+      { name: "Переменная", desc: "Коробка для значения. const — не меняем.", code: 'const name = "Артём";\nlet score = 0;' },
+      { name: "Если… то…", desc: "Код выполняется только при условии.", code: 'if (score >= 10) {\n  console.log("Победа");\n}' },
+      { name: "Своя функция", desc: "Кусок кода, который можно вызывать снова.", code: 'function greet() {\n  console.log("Привет!");\n}\ngreet();' },
+      { name: "Показать / спрятать", desc: "Меняем стиль элемента.", code: 'document.querySelector(".card").style.display = "none";' },
+      { name: "Случайное число", desc: "Число от 1 до 10.", code: "const n = Math.floor(Math.random() * 10) + 1;\nconsole.log(n);" },
+    ],
+  },
+};
 const EXAMPLE = {
   html: `<section class="card">
   <p class="tag">Kodify</p>
@@ -123,6 +175,7 @@ function persist() {
       js: getCode("js"),
       filename: els.filename.value,
       autoRun: els.autoRun.checked,
+      hintsOpen: document.getElementById("hints").classList.contains("is-open"),
     })
   );
 }
@@ -140,6 +193,10 @@ function restore() {
     const savedName = saved.filename || "Index.html";
     els.filename.value = savedName === "project.html" ? "Index.html" : savedName;
     els.autoRun.checked = Boolean(saved.autoRun);
+    if (saved.hintsOpen) {
+      document.getElementById("hints").classList.add("is-open");
+      document.getElementById("btn-hints").classList.add("is-on");
+    }
   } catch {
     loadExample(false);
   }
@@ -431,17 +488,45 @@ function formatCurrentCode() {
   showToast("Код отформатирован");
 }
 
-function editorExtraKeys() {
+function tryEmmetExpand(cm) {
+  const before = cm.getValue();
+  const cursor = cm.getCursor();
+  const commands = CodeMirror.commands || {};
+  if (typeof commands.emmetExpandAbbreviation === "function") {
+    commands.emmetExpandAbbreviation(cm);
+  }
+  if (cm.getValue() !== before) return true;
+  if (typeof commands.emmetExpandAbbreviationAll === "function") {
+    commands.emmetExpandAbbreviationAll(cm);
+  }
+  const afterCursor = cm.getCursor();
+  return cm.getValue() !== before || afterCursor.line !== cursor.line || afterCursor.ch !== cursor.ch;
+}
+
+function editorExtraKeys(lang) {
   return {
     "Ctrl-Enter": runCode,
     "Cmd-Enter": runCode,
+    "Ctrl-Space": "autocomplete",
     "Ctrl-S": function (cm) {
       cm && saveProject();
     },
     "Cmd-S": function (cm) {
       cm && saveProject();
     },
+    Tab: function (cm) {
+      if ((lang === "html" || lang === "css") && tryEmmetExpand(cm)) return;
+      if (cm.somethingSelected()) cm.indentSelection("add");
+      else cm.replaceSelection("  ", "end");
+    },
   };
+}
+
+function maybeShowHint(cm, change) {
+  if (!cm.showHint || change.origin !== "+input") return;
+  if (change.text.length !== 1 || !change.text[0]) return;
+  if (!/[\w.#@\-:!]/.test(change.text[0])) return;
+  cm.showHint({ completeSingle: false });
 }
 
 function initEditors() {
@@ -459,9 +544,11 @@ function initEditors() {
       autoCloseBrackets: true,
       autoCloseTags: lang === "html",
       styleActiveLine: true,
-      extraKeys: editorExtraKeys(),
+      extraKeys: editorExtraKeys(lang),
+      hintOptions: { completeSingle: false },
     });
     codeEditors[lang].on("change", scheduleAutoRun);
+    codeEditors[lang].on("inputRead", maybeShowHint);
   });
   requestAnimationFrame(() => {
     if (codeEditors.html) codeEditors.html.refresh();
@@ -475,6 +562,80 @@ function refreshActiveEditor() {
   requestAnimationFrame(() => editor.refresh());
 }
 
+function insertSnippet(code) {
+  const lang = currentTab();
+  const editor = codeEditors[lang];
+  if (editor) {
+    editor.replaceSelection(`${code}\n`);
+    editor.focus();
+  } else {
+    const area = els[lang];
+    const start = area.selectionStart;
+    const end = area.selectionEnd;
+    area.value = `${area.value.slice(0, start)}${code}\n${area.value.slice(end)}`;
+    area.focus();
+  }
+  persist();
+  showToast("Пример вставлен в редактор");
+}
+
+function renderHints() {
+  const pack = HINTS[currentTab()] || HINTS.html;
+  document.getElementById("hints-title").textContent = pack.title;
+  const list = document.getElementById("hints-list");
+  list.replaceChildren();
+  pack.items.forEach((item) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "hint-card";
+    const title = document.createElement("strong");
+    title.textContent = item.name;
+    const desc = document.createElement("span");
+    desc.textContent = item.desc;
+    const sample = document.createElement("code");
+    sample.textContent = item.code.replace(/\s+/g, " ").trim();
+    card.append(title, desc, sample);
+    card.addEventListener("click", () => insertSnippet(item.code));
+    list.appendChild(card);
+  });
+}
+
+function renderCheatsheet() {
+  const grid = document.getElementById("cheatsheet-grid");
+  grid.replaceChildren();
+  ["html", "css", "js"].forEach((lang) => {
+    const pack = HINTS[lang];
+    const col = document.createElement("article");
+    col.className = "cheatsheet-col";
+    const heading = document.createElement("h3");
+    heading.textContent = pack.title;
+    col.appendChild(heading);
+    pack.items.forEach((item) => {
+      const wrap = document.createElement("div");
+      wrap.className = "cheat-item";
+      const name = document.createElement("strong");
+      name.textContent = item.name;
+      const desc = document.createElement("p");
+      desc.textContent = item.desc;
+      const sample = document.createElement("code");
+      sample.textContent = item.code;
+      wrap.append(name, desc, sample);
+      col.appendChild(wrap);
+    });
+    grid.appendChild(col);
+  });
+}
+
+function toggleHints() {
+  const box = document.getElementById("hints");
+  box.classList.toggle("is-open");
+  const open = box.classList.contains("is-open");
+  document.getElementById("btn-hints").classList.toggle("is-on", open);
+  if (open) renderHints();
+  persist();
+  refreshActiveEditor();
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((item) => {
@@ -485,6 +646,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
       pane.classList.toggle("is-active", pane.dataset.pane === tab.dataset.tab);
     });
     refreshActiveEditor();
+    if (document.getElementById("hints").classList.contains("is-open")) renderHints();
   });
 });
 
@@ -494,6 +656,7 @@ document.getElementById("btn-example").addEventListener("click", () => {
   loadExample();
   runCode();
 });
+document.getElementById("btn-hints").addEventListener("click", toggleHints);
 document.getElementById("btn-format").addEventListener("click", formatCurrentCode);
 document.getElementById("btn-fullscreen").addEventListener("click", togglePreviewFullscreen);
 document.getElementById("btn-clear").addEventListener("click", () => {
@@ -544,4 +707,6 @@ if (!supportsDirectoryPicker() && !supportsSavePicker()) {
 
 restore();
 initEditors();
+renderCheatsheet();
+if (document.getElementById("hints").classList.contains("is-open")) renderHints();
 if (els.autoRun.checked) runCode();

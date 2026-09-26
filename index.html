@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -20,6 +21,7 @@
     </a>
     <nav class="nav">
       <a href="#workspace">Редактор</a>
+      <a href="#cheatsheet">База</a>
       <a href="#howto">Как пользоваться</a>
     </nav>
     <div class="header-actions">
@@ -41,6 +43,7 @@
             <input type="checkbox" id="auto-run">
             <span>Автозапуск</span>
           </label>
+          <button class="icon-btn" type="button" id="btn-hints" title="База HTML, CSS и JS">Подсказки</button>
           <button class="icon-btn" type="button" id="btn-format" title="Красиво оформить код">Форматировать</button>
           <button class="icon-btn" type="button" id="btn-clear" title="Очистить редакторы">Очистить</button>
         </div>
@@ -60,6 +63,13 @@
           <textarea id="code-js" spellcheck="false" autocomplete="off" placeholder="Вставь сюда JavaScript..."></textarea>
         </div>
       </div>
+      <aside class="hints" id="hints">
+        <div class="hints-head">
+          <p id="hints-title">База HTML</p>
+          <p class="hints-note">Карточка вставляет пример. Emmet: напиши <code>div.card</code> и нажми Tab</p>
+        </div>
+        <div class="hints-list" id="hints-list"></div>
+      </aside>
     </section>
 
     <section class="panel preview-panel" id="preview-panel">
@@ -111,6 +121,12 @@
     </div>
   </section>
 
+  <section id="cheatsheet" class="howto">
+    <h2>База для новичков</h2>
+    <p class="hero-lead cheatsheet-lead">Короткая шпаргалка: из чего состоит страница, как её украсить и как оживить кнопкой.</p>
+    <div class="cheatsheet-grid" id="cheatsheet-grid"></div>
+  </section>
+
   <section id="howto" class="howto">
     <h2>Как пользоваться</h2>
     <div class="howto-grid">
@@ -137,7 +153,7 @@
       <strong>KODIFY COMPILER</strong>
       <p>Учебный инструмент онлайн-школы программирования</p>
     </div>
-    <p class="footer-copy">© 2017–2026 Kodify. Ctrl + Enter — запуск, Ctrl + S — сохранение, Esc — свернуть превью.</p>
+    <p class="footer-copy">© 2017–2026 Kodify. Tab — Emmet, Ctrl + Space — подсказки, Ctrl + Enter — запуск.</p>
   </footer>
 
   <div class="toast" id="toast" role="status"></div>
@@ -150,6 +166,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/xml-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/html-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/css-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emmetio/codemirror-plugin@1.2.4/dist/browser.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-css.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-html.min.js"></script>
