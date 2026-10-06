@@ -90,6 +90,20 @@
     </section>
   </main>
 
+  <section class="panel assets-bar" id="assets-bar">
+    <div class="panel-head">
+      <h2>Картинки проекта</h2>
+      <div class="panel-meta">
+        <span class="status" id="assets-count">Файлов: 0</span>
+        <button class="btn btn-ghost btn-fs" type="button" id="btn-upload">Загрузить картинки</button>
+        <input class="sr-only" type="file" id="file-images" accept="image/*,.svg" multiple>
+      </div>
+    </div>
+    <div class="assets-list" id="assets-list">
+      <p class="assets-empty" id="assets-empty">Перетащи сюда картинки или нажми «Загрузить». В коде пиши путь, например <code>images/cat.png</code>.</p>
+    </div>
+  </section>
+
   <section class="bottom-bar">
     <div class="console-panel">
       <div class="panel-head">
@@ -101,21 +115,22 @@
 
     <div class="save-panel">
       <div class="panel-head">
-        <h2>Сохранить HTML</h2>
+        <h2>Сохранить проект</h2>
         <span class="folder-chip" id="folder-chip">Папка не выбрана</span>
       </div>
       <div class="save-form">
         <label class="field">
-          <span>Имя файла</span>
+          <span>Имя HTML-файла</span>
           <input type="text" id="filename" value="Index.html" maxlength="120">
         </label>
         <div class="save-actions">
           <button class="btn btn-ghost" type="button" id="btn-pick-folder">Выбрать папку</button>
-          <button class="btn btn-primary" type="button" id="btn-save">Сохранить как</button>
+          <button class="btn btn-primary" type="button" id="btn-save">Сохранить проект</button>
+          <button class="btn btn-ghost" type="button" id="btn-zip">Скачать ZIP</button>
         </div>
         <p class="save-hint" id="save-hint">
-          Не выбирай Рабочий стол, OneDrive и корень диска C:\ — Chrome считает их системными.
-          Создай обычную папку, например Документы\kodify, или просто нажми «Сохранить как».
+          Сохранится HTML и папка images. ZIP удобно распаковать и залить на GitHub Pages.
+          Не выбирай Рабочий стол и OneDrive — Chrome считает их системными.
         </p>
       </div>
     </div>
@@ -143,7 +158,7 @@
       <article>
         <span class="step">03</span>
         <h3>Сохрани файл</h3>
-        <p>Нажми «Сохранить как» и укажи место файла. Папку лучше брать простую, без Рабочего стола и OneDrive — иначе Chrome заблокирует доступ.</p>
+        <p>Загрузи картинки, в коде укажи путь <code>images/имя.png</code>. «Сохранить проект» или ZIP запишет HTML вместе с файлами — эту папку можно сразу залить на GitHub.</p>
       </article>
     </div>
   </section>
@@ -175,6 +190,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-css.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-html.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

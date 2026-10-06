@@ -10,7 +10,7 @@ const HINTS = {
       { name: "Абзац", desc: "Обычный текст.", code: "<p>Это мой первый сайт.</p>" },
       { name: "Кнопка", desc: "На неё можно нажать. id нужен для JavaScript.", code: '<button id="go">Нажми меня</button>' },
       { name: "Ссылка", desc: "Ведёт на другую страницу.", code: '<a href="https://kodify.online">Сайт Kodify</a>' },
-      { name: "Картинка", desc: "src — адрес файла, alt — описание.", code: '<img src="cat.png" alt="Кот" width="200">' },
+      { name: "Картинка", desc: "Путь из «Картинки проекта», например images/cat.png.", code: '<img src="images/cat.png" alt="Кот" width="200">' },
       { name: "Список", desc: "ul — список, li — пункт.", code: "<ul>\n  <li>HTML</li>\n  <li>CSS</li>\n  <li>JS</li>\n</ul>" },
       { name: "Коробка div", desc: "Блок, чтобы группировать элементы.", code: '<div class="card">\n  <h2>Карточка</h2>\n  <p>Текст внутри</p>\n</div>' },
       { name: "Поле ввода", desc: "Сюда ученик может писать текст.", code: '<input type="text" placeholder="Твоё имя">' },
@@ -24,7 +24,7 @@ const HINTS = {
       { name: "Emmet: отступ", desc: "Напиши m20 и нажми Tab — будет margin: 20px.", code: "m20" },
       { name: "Emmet: флекс", desc: "df + Tab = display: flex.", code: "df" },
       { name: "Цвет текста", desc: "Любой цвет: имя, #hex или rgb.", code: "h1 {\n  color: #b8f750;\n}" },
-      { name: "Фон", desc: "Заливка страницы или блока.", code: "body {\n  background: #111;\n}" },
+      { name: "Фон-картинка", desc: "Картинка из проекта как фон блока.", code: ".hero {\n  background-image: url(images/bg.png);\n  background-size: cover;\n}" },
       { name: "Размер шрифта", desc: "px — пиксели, чем больше число, тем крупнее.", code: "p {\n  font-size: 18px;\n  font-family: Arial, sans-serif;\n}" },
       { name: "Выравнивание", desc: "Текст слева, по центру или справа.", code: ".card {\n  text-align: center;\n}" },
       { name: "Отступы", desc: "padding — внутри, margin — снаружи.", code: ".card {\n  padding: 24px;\n  margin: 16px;\n}" },
@@ -125,6 +125,231 @@ let previewUrl = null;
 let autoRunTimer = 0;
 let toastTimer = 0;
 const codeEditors = {};
+const assets = new Map();
+const ASSET_DB = "kodify-compiler-assets";
+const MAX_ASSET_BYTES = 8 * 1024 * 1024;
+
+function openAssetDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(ASSET_DB, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains("files")) {
+        req.result.createObjectStore("files");
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbPut(path, blob) {
+  return openAssetDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction("files", "readwrite");
+        tx.objectStore("files").put(blob, path);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      })
+  );
+}
+
+function idbDelete(path) {
+  return openAssetDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction("files", "readwrite");
+        tx.objectStore("files").delete(path);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      })
+  );
+}
+
+function idbLoadAll() {
+  return openAssetDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction("files", "readonly");
+        const req = tx.objectStore("files").openCursor();
+        const rows = [];
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (cursor) {
+            rows.push([cursor.key, cursor.value]);
+            cursor.continue();
+          } else {
+            resolve(rows);
+          }
+        };
+        req.onerror = () => reject(req.error);
+      })
+  );
+}
+
+function sanitizeAssetName(name) {
+  const base = (name || "image.png").split(/[/\\]/).pop();
+  return base.replace(/[<>:"|?*\u0000-\u001f]/g, "_").replace(/\s+/g, "-") || "image.png";
+}
+
+function uniqueAssetPath(preferred) {
+  let path = preferred.replace(/\\/g, "/").replace(/^\/+/, "");
+  if (!path.includes("/")) path = `images/${path}`;
+  if (!assets.has(path)) return path;
+  const dot = path.lastIndexOf(".");
+  const stem = dot === -1 ? path : path.slice(0, dot);
+  const ext = dot === -1 ? "" : path.slice(dot);
+  let i = 2;
+  while (assets.has(`${stem}-${i}${ext}`)) i += 1;
+  return `${stem}-${i}${ext}`;
+}
+
+function rememberAsset(path, blob) {
+  const prev = assets.get(path);
+  if (prev && prev.url) URL.revokeObjectURL(prev.url);
+  assets.set(path, {
+    blob,
+    url: URL.createObjectURL(blob),
+    type: blob.type || "application/octet-stream",
+  });
+}
+
+function renderAssets() {
+  const list = document.getElementById("assets-list");
+  const count = document.getElementById("assets-count");
+  count.textContent = `Файлов: ${assets.size}`;
+  list.replaceChildren();
+  if (!assets.size) {
+    const empty = document.createElement("p");
+    empty.className = "assets-empty";
+    empty.id = "assets-empty";
+    empty.innerHTML =
+      'Перетащи сюда картинки или нажми «Загрузить». В коде пиши путь, например <code>images/cat.png</code>.';
+    list.appendChild(empty);
+    return;
+  }
+  [...assets.keys()].sort().forEach((path) => {
+    const item = assets.get(path);
+    const card = document.createElement("div");
+    card.className = "asset-card";
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = path;
+    const meta = document.createElement("div");
+    meta.className = "asset-meta";
+    const label = document.createElement("span");
+    label.className = "asset-label";
+    label.textContent = "Ссылка для кода";
+    const pathEl = document.createElement("code");
+    pathEl.className = "asset-path";
+    pathEl.textContent = path;
+    const actions = document.createElement("div");
+    actions.className = "asset-actions";
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.textContent = "Копировать";
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(path);
+        showToast(`Скопировано: ${path}`);
+      } catch {
+        showToast(path);
+      }
+    });
+    const useBtn = document.createElement("button");
+    useBtn.type = "button";
+    useBtn.textContent = "Вставить в HTML";
+    useBtn.addEventListener("click", () => insertAssetTag(path));
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "asset-del";
+    del.textContent = "Удалить";
+    del.addEventListener("click", () => removeAsset(path));
+    actions.append(copyBtn, useBtn, del);
+    meta.append(label, pathEl, actions);
+    card.append(img, meta);
+    list.appendChild(card);
+  });
+}
+
+function insertAssetTag(path) {
+  const snippet = `<img src="${path}" alt="">`;
+  const htmlTab = document.querySelector('.tab[data-tab="html"]');
+  if (htmlTab) htmlTab.click();
+  insertSnippet(snippet);
+}
+
+async function addFiles(fileList) {
+  const files = [...fileList].filter((file) => file.type.startsWith("image/") || /\.svg$/i.test(file.name));
+  if (!files.length) {
+    showToast("Нужны файлы-картинки (png, jpg, gif, svg, webp)", true);
+    return;
+  }
+  for (const file of files) {
+    if (file.size > MAX_ASSET_BYTES) {
+      showToast(`«${file.name}» больше 8 МБ — пропусти`, true);
+      continue;
+    }
+    const path = uniqueAssetPath(`images/${sanitizeAssetName(file.name)}`);
+    rememberAsset(path, file);
+    try {
+      await idbPut(path, file);
+    } catch {
+      showToast("Картинка в превью есть, но в память браузера не сохранилась", true);
+    }
+  }
+  renderAssets();
+  if (els.autoRun.checked) runCode();
+  else showToast("Картинки добавлены. Вставь путь в код и нажми «Запустить»");
+}
+
+async function removeAsset(path) {
+  const prev = assets.get(path);
+  if (prev && prev.url) URL.revokeObjectURL(prev.url);
+  assets.delete(path);
+  try {
+    await idbDelete(path);
+  } catch {
+    /* ignore */
+  }
+  renderAssets();
+  if (els.autoRun.checked) runCode();
+}
+
+async function restoreAssets() {
+  try {
+    const rows = await idbLoadAll();
+    rows.forEach(([path, blob]) => rememberAsset(path, blob));
+  } catch {
+    /* first visit or private mode */
+  }
+  renderAssets();
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function rewriteAssetPaths(html) {
+  let out = html;
+  [...assets.keys()]
+    .sort((a, b) => b.length - a.length)
+    .forEach((path) => {
+      out = out.replace(new RegExp(escapeRegExp(path), "g"), assets.get(path).url);
+    });
+  return out;
+}
+
+function githubReadme(filename) {
+  return `# Проект Kodify
+
+1. Загрузи эту папку в GitHub.
+2. Settings → Pages → Deploy from a branch → \`main\` / root.
+3. Если главная страница не открылась, переименуй \`${filename}\` в \`index.html\`.
+
+Картинки лежат в \`images/\`. В коде используй пути вида \`images/имя.png\`.
+`;
+}
 
 function getCode(lang) {
   return codeEditors[lang] ? codeEditors[lang].getValue() : els[lang].value;
@@ -295,7 +520,7 @@ function logLine(type, text) {
 
 function runCode() {
   const html = compileDocument(getCode("html"), getCode("css"), getCode("js"));
-  const hooked = withConsoleHook(html);
+  const hooked = withConsoleHook(rewriteAssetPaths(html));
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   const blob = new Blob([hooked], { type: "text/html" });
   previewUrl = URL.createObjectURL(blob);
@@ -339,6 +564,48 @@ async function saveToDirectory(filename, content) {
   await writable.close();
 }
 
+async function writeRelativeFile(root, relativePath, data) {
+  const parts = relativePath.replace(/\\/g, "/").split("/").filter(Boolean);
+  let dir = root;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    dir = await dir.getDirectoryHandle(parts[i], { create: true });
+  }
+  const fileHandle = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+async function writeProjectToDirectory(filename, html) {
+  await writeRelativeFile(directoryHandle, filename, html);
+  for (const [path, item] of assets) {
+    await writeRelativeFile(directoryHandle, path, item.blob);
+  }
+  await writeRelativeFile(directoryHandle, "README.md", githubReadme(filename));
+}
+
+async function downloadProjectZip(filename, html) {
+  if (typeof JSZip !== "function") {
+    showToast("Не удалось загрузить ZIP. Проверь интернет и обнови страницу.", true);
+    return;
+  }
+  const zip = new JSZip();
+  zip.file(filename, html);
+  zip.file("README.md", githubReadme(filename));
+  for (const [path, item] of assets) {
+    zip.file(path, item.blob);
+  }
+  const blob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "kodify-project.zip";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function saveWithFilePicker(filename, content) {
   const handle = await window.showSaveFilePicker({
     suggestedName: filename,
@@ -380,8 +647,8 @@ async function saveProject() {
         const next = await directoryHandle.requestPermission({ mode: "readwrite" });
         if (next !== "granted") throw new Error("no-permission");
       }
-      await saveToDirectory(filename, content);
-      showToast(`Сохранено: ${filename} → ${directoryHandle.name}`);
+      await writeProjectToDirectory(filename, content);
+      showToast(`Проект сохранён в «${directoryHandle.name}»`);
       persist();
       return;
     } catch (error) {
@@ -389,6 +656,30 @@ async function saveProject() {
       directoryHandle = null;
       els.folderChip.textContent = "Папка не выбрана";
     }
+  }
+
+  if (supportsDirectoryPicker()) {
+    const picked = await pickFolder();
+    if (picked) {
+      try {
+        await writeProjectToDirectory(filename, content);
+        showToast(`Проект сохранён в «${directoryHandle.name}»`);
+        persist();
+        return;
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+        directoryHandle = null;
+        els.folderChip.textContent = "Папка не выбрана";
+        showToast("Папка недоступна. Скачиваю ZIP.", true);
+      }
+    }
+  }
+
+  if (assets.size) {
+    await downloadProjectZip(filename, content);
+    showToast("Скачан ZIP со всеми файлами — распакуй и залей на GitHub");
+    persist();
+    return;
   }
 
   if (supportsSavePicker()) {
@@ -405,6 +696,15 @@ async function saveProject() {
 
   downloadFile(filename, content);
   showToast(`Файл ${filename} скачан — перенеси его в нужную папку`);
+  persist();
+}
+
+async function saveZipOnly() {
+  const filename = sanitizeFilename(els.filename.value);
+  els.filename.value = filename;
+  const content = compileDocument(getCode("html"), getCode("css"), getCode("js"));
+  await downloadProjectZip(filename, content);
+  showToast("ZIP готов: HTML + images. Распакуй и залей на GitHub");
   persist();
 }
 
@@ -671,6 +971,31 @@ document.getElementById("btn-clear-console").addEventListener("click", () => {
 });
 document.getElementById("btn-pick-folder").addEventListener("click", pickFolder);
 document.getElementById("btn-save").addEventListener("click", saveProject);
+document.getElementById("btn-zip").addEventListener("click", saveZipOnly);
+document.getElementById("btn-upload").addEventListener("click", () => {
+  document.getElementById("file-images").click();
+});
+document.getElementById("file-images").addEventListener("change", (event) => {
+  addFiles(event.target.files);
+  event.target.value = "";
+});
+
+const assetsBar = document.getElementById("assets-bar");
+["dragenter", "dragover"].forEach((type) => {
+  assetsBar.addEventListener(type, (event) => {
+    event.preventDefault();
+    assetsBar.classList.add("is-drop");
+  });
+});
+["dragleave", "drop"].forEach((type) => {
+  assetsBar.addEventListener(type, (event) => {
+    event.preventDefault();
+    assetsBar.classList.remove("is-drop");
+  });
+});
+assetsBar.addEventListener("drop", (event) => {
+  if (event.dataTransfer && event.dataTransfer.files.length) addFiles(event.dataTransfer.files);
+});
 
 els.filename.addEventListener("input", persist);
 els.autoRun.addEventListener("change", persist);
@@ -709,4 +1034,6 @@ restore();
 initEditors();
 renderCheatsheet();
 if (document.getElementById("hints").classList.contains("is-open")) renderHints();
-if (els.autoRun.checked) runCode();
+restoreAssets().then(() => {
+  if (els.autoRun.checked) runCode();
+});
