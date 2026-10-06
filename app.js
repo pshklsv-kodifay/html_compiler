@@ -10,7 +10,7 @@ const HINTS = {
       { name: "Абзац", desc: "Обычный текст.", code: "<p>Это мой первый сайт.</p>" },
       { name: "Кнопка", desc: "На неё можно нажать. id нужен для JavaScript.", code: '<button id="go">Нажми меня</button>' },
       { name: "Ссылка", desc: "Ведёт на другую страницу.", code: '<a href="https://kodify.online">Сайт Kodify</a>' },
-      { name: "Картинка", desc: "Путь из «Картинки проекта», например images/cat.png.", code: '<img src="images/cat.png" alt="Кот" width="200">' },
+      { name: "Картинка", desc: "Путь из «Картинки проекта», например cat.png.", code: '<img src="cat.png" alt="Кот" width="200">' },
       { name: "Список", desc: "ul — список, li — пункт.", code: "<ul>\n  <li>HTML</li>\n  <li>CSS</li>\n  <li>JS</li>\n</ul>" },
       { name: "Коробка div", desc: "Блок, чтобы группировать элементы.", code: '<div class="card">\n  <h2>Карточка</h2>\n  <p>Текст внутри</p>\n</div>' },
       { name: "Поле ввода", desc: "Сюда ученик может писать текст.", code: '<input type="text" placeholder="Твоё имя">' },
@@ -24,7 +24,7 @@ const HINTS = {
       { name: "Emmet: отступ", desc: "Напиши m20 и нажми Tab — будет margin: 20px.", code: "m20" },
       { name: "Emmet: флекс", desc: "df + Tab = display: flex.", code: "df" },
       { name: "Цвет текста", desc: "Любой цвет: имя, #hex или rgb.", code: "h1 {\n  color: #b8f750;\n}" },
-      { name: "Фон-картинка", desc: "Картинка из проекта как фон блока.", code: ".hero {\n  background-image: url(images/bg.png);\n  background-size: cover;\n}" },
+      { name: "Фон-картинка", desc: "Картинка из проекта как фон блока.", code: ".hero {\n  background-image: url(bg.png);\n  background-size: cover;\n}" },
       { name: "Размер шрифта", desc: "px — пиксели, чем больше число, тем крупнее.", code: "p {\n  font-size: 18px;\n  font-family: Arial, sans-serif;\n}" },
       { name: "Выравнивание", desc: "Текст слева, по центру или справа.", code: ".card {\n  text-align: center;\n}" },
       { name: "Отступы", desc: "padding — внутри, margin — снаружи.", code: ".card {\n  padding: 24px;\n  margin: 16px;\n}" },
@@ -194,7 +194,8 @@ function sanitizeAssetName(name) {
 
 function uniqueAssetPath(preferred) {
   let path = preferred.replace(/\\/g, "/").replace(/^\/+/, "");
-  if (!path.includes("/")) path = `images/${path}`;
+  path = path.split("/").pop();
+  if (!path) path = "image.png";
   if (!assets.has(path)) return path;
   const dot = path.lastIndexOf(".");
   const stem = dot === -1 ? path : path.slice(0, dot);
@@ -224,7 +225,7 @@ function renderAssets() {
     empty.className = "assets-empty";
     empty.id = "assets-empty";
     empty.innerHTML =
-      'Перетащи сюда картинки или нажми «Загрузить». В коде пиши путь, например <code>images/cat.png</code>.';
+      'Перетащи сюда картинки или нажми «Загрузить». В коде пиши имя файла, например <code>cat.png</code>.';
     list.appendChild(empty);
     return;
   }
@@ -290,7 +291,7 @@ async function addFiles(fileList) {
       showToast(`«${file.name}» больше 8 МБ — пропусти`, true);
       continue;
     }
-    const path = uniqueAssetPath(`images/${sanitizeAssetName(file.name)}`);
+    const path = uniqueAssetPath(sanitizeAssetName(file.name));
     rememberAsset(path, file);
     try {
       await idbPut(path, file);
@@ -319,7 +320,18 @@ async function removeAsset(path) {
 async function restoreAssets() {
   try {
     const rows = await idbLoadAll();
-    rows.forEach(([path, blob]) => rememberAsset(path, blob));
+    for (const [storedPath, blob] of rows) {
+      const flat = uniqueAssetPath(storedPath);
+      rememberAsset(flat, blob);
+      if (flat !== storedPath) {
+        try {
+          await idbDelete(storedPath);
+          await idbPut(flat, blob);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
   } catch {
     /* first visit or private mode */
   }
@@ -347,7 +359,7 @@ function githubReadme(filename) {
 2. Settings → Pages → Deploy from a branch → \`main\` / root.
 3. Если главная страница не открылась, переименуй \`${filename}\` в \`index.html\`.
 
-Картинки лежат в \`images/\`. В коде используй пути вида \`images/имя.png\`.
+Картинки лежат рядом с HTML. В коде используй имя файла, например \`cat.png\`.
 `;
 }
 
